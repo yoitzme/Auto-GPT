@@ -1,8 +1,10 @@
 """Configuration class to store the state of bools for different scripts access."""
 import os
+from typing import List
 
 import openai
 import yaml
+from auto_gpt_plugin_template import AutoGPTPluginTemplate
 from colorama import Fore
 from dotenv import load_dotenv
 
@@ -123,6 +125,17 @@ class Config(metaclass=Singleton):
         # Initialize the OpenAI API client
         openai.api_key = self.openai_api_key
 
+        self.plugins_dir = os.getenv("PLUGINS_DIR", "plugins")
+        self.plugins: List[AutoGPTPluginTemplate] = []
+        self.plugins_openai = []
+
+        plugins_allowlist = os.getenv("ALLOWLISTED_PLUGINS")
+        if plugins_allowlist:
+            self.plugins_allowlist = plugins_allowlist.split(",")
+        else:
+            self.plugins_allowlist = []
+        self.plugins_denylist = []
+
     def get_azure_deployment_id_for_model(self, model: str) -> str:
         """
         Returns the relevant deployment id for the model specified.
@@ -240,6 +253,10 @@ class Config(metaclass=Singleton):
     def set_debug_mode(self, value: bool) -> None:
         """Set the debug mode value."""
         self.debug_mode = value
+
+    def set_plugins(self, value: list) -> None:
+        """Set the plugins value."""
+        self.plugins = value
 
 
 def check_openai_api_key() -> None:
