@@ -1,6 +1,5 @@
 """ Image Generation Module for AutoGPT."""
 import io
-import os.path
 import uuid
 from base64 import b64decode
 
@@ -8,12 +7,14 @@ import openai
 import requests
 from PIL import Image
 
+from autogpt.commands.command import command
 from autogpt.config import Config
 from autogpt.workspace import path_in_workspace
 
 CFG = Config()
 
 
+@command("generate_image", "Generate Image", '"prompt": "<prompt>"', CFG.image_provider)
 def generate_image(prompt: str, size: int = 256) -> str:
     """Generate an image from a prompt.
 
@@ -82,7 +83,7 @@ def generate_image_with_dalle(prompt: str, filename: str, size: int) -> str:
     Args:
         prompt (str): The prompt to use
         filename (str): The filename to save the image to
-        size (int): The size of the image.
+        size (int): The size of the image
 
     Returns:
         str: The filename of the image
@@ -125,7 +126,7 @@ def generate_image_with_sd_webui(
     Args:
         prompt (str): The prompt to use
         filename (str): The filename to save the image to
-        size (int, optional): The size of the image. Defaults to 512.
+        size (int, optional): The size of the image. Defaults to 256.
         negative_prompt (str, optional): The negative prompt to use. Defaults to "".
         extra (dict, optional): Extra parameters to pass to the API. Defaults to {}.
     Returns:
