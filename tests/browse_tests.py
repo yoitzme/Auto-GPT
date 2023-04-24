@@ -10,10 +10,10 @@ from browse import extract_hyperlinks
 
 
 class TestBrowseLinks(unittest.TestCase):
-    """Class for testing the extract_hyperlinks function"""
+    """Unit tests for the browse module functions that extract hyperlinks."""
 
     def test_extract_hyperlinks(self):
-        """Test the extract_hyperlinks function"""
+        """Test the extract_hyperlinks function with a simple HTML body."""
         body = """
         <body>
         <a href="https://google.com">Google</a>

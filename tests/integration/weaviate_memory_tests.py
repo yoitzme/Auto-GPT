@@ -1,27 +1,22 @@
-import os
-import sys
 import unittest
-from unittest import mock
 from uuid import uuid4
 
 from weaviate import Client
 from weaviate.util import get_valid_uuid
 
 from autogpt.config import Config
-from autogpt.memory.base import get_ada_embedding
+from autogpt.llm_utils import get_ada_embedding
 from autogpt.memory.weaviate import WeaviateMemory
 
 
 class TestWeaviateMemory(unittest.TestCase):
-    """Tests for the WeaviateMemory class."""
-
     cfg = None
     client = None
     index = None
 
     @classmethod
     def setUpClass(cls):
-        """Set up the test environment"""
+        """Set up the test environment for the WeaviateMemory tests."""
         # only create the connection to weaviate once
         cls.cfg = Config()
 
@@ -53,7 +48,7 @@ class TestWeaviateMemory(unittest.TestCase):
     """
 
     def setUp(self):
-        """Set up the test environment"""
+        """Set up the test environment for the WeaviateMemory tests."""
         try:
             self.client.schema.delete_class(self.index)
         except:
