@@ -66,21 +66,16 @@ def split_file(
         default is no overlap
     :return: A generator yielding chunks of text
     """
+    if max_length <= 0 or overlap < 0 or overlap >= max_length:
+        raise ValueError('max_length must be positive and 0 <= overlap < max_length')
     start = 0
     content_length = len(content)
 
     while start < content_length:
-        end = start + max_length
-        if end + overlap < content_length:
-            chunk = content[start : end + overlap - 1]
-        else:
-            chunk = content[start:content_length]
-
-            # Account for the case where the last chunk is shorter than the overlap, so it has already been consumed
-            if len(chunk) <= overlap:
-                break
-
-        yield chunk
+        end = min(start + max_length, content_length)
+        yield content[start:end]
+        if end == content_length:
+            break
         start += max_length - overlap
 
 
