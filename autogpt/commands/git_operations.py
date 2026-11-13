@@ -1,4 +1,7 @@
 """Git operations for autogpt"""
+import re
+from urllib.parse import quote, urlsplit, urlunsplit
+
 from git.repo import Repo
 
 from autogpt.commands.command import command
@@ -24,11 +27,27 @@ def clone_repository(repository_url: str, clone_path: str) -> str:
 
     Returns:
         str: The result of the clone operation"""
-    split_url = repository_url.split("//")
-    auth_repo_url = f"//{CFG.github_username}:{CFG.github_api_key}@".join(split_url)
-    safe_clone_path = path_in_workspace(clone_path)
     try:
+        parsed = urlsplit(repository_url)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "github.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.port is not None
+            or parsed.query
+            or parsed.fragment
+            or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?", parsed.path)
+        ):
+            return "Error: Only HTTPS GitHub repository URLs are supported."
+        credentials = (
+            f"{quote(CFG.github_username, safe='')}:"
+            f"{quote(CFG.github_api_key, safe='')}@github.com"
+        )
+        auth_repo_url = urlunsplit(("https", credentials, parsed.path, "", ""))
+        safe_clone_path = path_in_workspace(clone_path)
         Repo.clone_from(auth_repo_url, safe_clone_path)
         return f"""Cloned {repository_url} to {safe_clone_path}"""
-    except Exception as e:
-        return f"Error: {str(e)}"
+    except Exception:
+        # Git exceptions can contain the credential-bearing URL or command line.
+        return "Error: Repository clone failed. Check the URL, access and workspace path."

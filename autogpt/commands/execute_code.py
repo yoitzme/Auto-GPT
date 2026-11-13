@@ -35,7 +35,7 @@ def execute_python_file(filename: str) -> str:
 
     if we_are_running_in_a_docker_container():
         result = subprocess.run(
-            f"python {file_path}", capture_output=True, encoding="utf8", shell=True
+            ["python", str(file_path)], capture_output=True, encoding="utf8"
         )
         if result.returncode == 0:
             return result.stdout
@@ -67,7 +67,7 @@ def execute_python_file(filename: str) -> str:
 
         container = client.containers.run(
             image_name,
-            f"python {file}",
+            ["python", str(file_path.relative_to(WORKSPACE_PATH.resolve()))],
             volumes={
                 os.path.abspath(WORKSPACE_PATH): {
                     "bind": "/workspace",
@@ -124,19 +124,14 @@ def execute_shell(command_line: str) -> str:
             " shell commands, EXECUTE_LOCAL_COMMANDS must be set to 'True' "
             "in your config. Do not attempt to bypass the restriction."
         )
-    current_dir = os.getcwd()
-    # Change dir into workspace if necessary
-    if str(WORKSPACE_PATH) not in current_dir:
-        os.chdir(WORKSPACE_PATH)
+    print(f"Executing command '{command_line}' in working directory '{WORKSPACE_PATH}'")
 
-    print(f"Executing command '{command_line}' in working directory '{os.getcwd()}'")
-
-    result = subprocess.run(command_line, capture_output=True, shell=True)
+    result = subprocess.run(
+        command_line, capture_output=True, shell=True, cwd=WORKSPACE_PATH
+    )
     output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
-    # Change back to whatever the prior working dir was
-
-    os.chdir(current_dir)
+    return output
 
 
 @command(
@@ -158,21 +153,20 @@ def execute_shell_popen(command_line) -> str:
     Returns:
         str: Description of the fact that the process started and its id
     """
-    current_dir = os.getcwd()
-    # Change dir into workspace if necessary
-    if str(WORKSPACE_PATH) not in current_dir:
-        os.chdir(WORKSPACE_PATH)
+    print(f"Executing command '{command_line}' in working directory '{WORKSPACE_PATH}'")
 
-    print(f"Executing command '{command_line}' in working directory '{os.getcwd()}'")
+    if not CFG.execute_local_commands:
+        return (
+            "You are not allowed to run local shell commands. To execute"
+            " shell commands, EXECUTE_LOCAL_COMMANDS must be set to 'True' "
+            "in your config. Do not attempt to bypass the restriction."
+        )
 
     do_not_show_output = subprocess.DEVNULL
     process = subprocess.Popen(
-        command_line, shell=True, stdout=do_not_show_output, stderr=do_not_show_output
+        command_line, shell=True, cwd=WORKSPACE_PATH,
+        stdout=do_not_show_output, stderr=do_not_show_output
     )
-
-    # Change back to whatever the prior working dir was
-
-    os.chdir(current_dir)
 
     return f"Subprocess started with PID:'{str(process.pid)}'"
 
