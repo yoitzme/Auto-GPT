@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import tempfile
 from typing import Any, List
 
 import numpy as np
@@ -41,14 +42,16 @@ class LocalCache(MemoryProviderSingleton):
         self.filename = f"{cfg.memory_index}.json"
         if os.path.exists(self.filename):
             try:
-                with open(self.filename, "w+b") as f:
+                with open(self.filename, "rb") as f:
                     file_content = f.read()
                     if not file_content.strip():
                         file_content = b"{}"
-                        f.write(file_content)
 
                     loaded = orjson.loads(file_content)
                     self.data = CacheContent(**loaded)
+                    self.data.embeddings = np.asarray(
+                        self.data.embeddings, dtype=np.float32
+                    ).reshape((-1, EMBED_DIM))
             except orjson.JSONDecodeError:
                 print(f"Error: The file '{self.filename}' is not in JSON format.")
                 self.data = CacheContent()
@@ -71,13 +74,11 @@ class LocalCache(MemoryProviderSingleton):
         """
         if "Command Error:" in text:
             return ""
-        self.data.texts.append(text)
-
         embedding = create_embedding_with_ada(text)
 
         vector = np.array(embedding).astype(np.float32)
         vector = vector[np.newaxis, :]
-        self.data.embeddings = np.concatenate(
+        embeddings = np.concatenate(
             [
                 self.data.embeddings,
                 vector,
@@ -85,10 +86,23 @@ class LocalCache(MemoryProviderSingleton):
             axis=0,
         )
 
-        with open(self.filename, "wb") as f:
-            out = orjson.dumps(self.data, option=SAVE_OPTIONS)
-            f.write(out)
+        updated = CacheContent(self.data.texts + [text], embeddings)
+        self._save(updated)
         return text
+
+    def _save(self, updated: CacheContent) -> None:
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=os.path.dirname(os.path.abspath(self.filename)), delete=False
+            ) as f:
+                temporary = f.name
+                f.write(orjson.dumps(updated, option=SAVE_OPTIONS))
+            os.replace(temporary, self.filename)
+        finally:
+            if temporary is not None and os.path.exists(temporary):
+                os.remove(temporary)
+        self.data = updated
 
     def clear(self) -> str:
         """
@@ -96,7 +110,7 @@ class LocalCache(MemoryProviderSingleton):
 
         Returns: A message indicating that the memory has been cleared.
         """
-        self.data = CacheContent()
+        self._save(CacheContent())
         return "Obliviated"
 
     def get(self, data: str) -> list[Any] | None:
